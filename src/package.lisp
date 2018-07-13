@@ -6,12 +6,19 @@
         #:phoe-toolbox)
   (:export
    #:*waves*
+   #:*flows*
    #:wave
+   #:name
    #:logged-wave
    #:logger
    #:executable-wave
    #:execute-wave
+   #:callback-wave
    #:handled-wave
    #:network-wave
    #:handled-network-wave
-   #:find-wave))
+   #:find-wave
+   #:flow
+   #:spawn-fn
+   #:waves
+   #:execute-flow))

@@ -46,9 +46,25 @@
 (defclass executable-wave (wave) ())
 
 (defgeneric execute-wave (wave &rest args)
-  (:method ((wave executable-wave) &rest args)
-    (warn "Default method for EXECUTE-WAVE called with args ~S." args)
-    t))
+  (:documentation "Returns two values: the first is true if execution was
+successful, otherwise is false. If execution was successful, then the second
+value contains data returned from the wave."))
+;; TODO rethink this; we have no means of fetching the values back from the wave
+
+(defmethod execute-wave ((wave executable-wave) &rest args)
+  (warn "Default method for EXECUTE-WAVE called with args ~S." args)
+  (values t nil))
+
+;;; CALLBACK-WAVE
+
+(defclass callback-wave (executable-wave)
+  ((%callback :accessor callback
+              :initarg :callback))
+  (:default-initargs
+   :callback (lambda (&rest args) (declare (ignore args)) (values t t))))
+
+(defmethod execute-wave ((wave callback-wave) &rest args)
+  (apply (callback wave) wave args))
 
 ;;; HANDLED-WAVE
 
@@ -59,21 +75,19 @@
     (error (e)
       (logger wave :error *wave-format*
               (class-name (class-of wave)) (name wave) (first args) e)
-      nil)))
+      (values nil nil))))
 
 ;;; NETWORK-WAVE
 
 (defclass network-wave (logged-wave executable-wave)
   ((%fetch-fn :accessor fetch-fn
-              :initarg :fetch-fn) ;; Returns data for MERGE and SPAWN
+              :initarg :fetch-fn) ;; Returns data for MERGE
    (%merge-fn :accessor merge-fn
               :initarg :merge-fn) ;; Returns if any data was merged
-   (%spawn-fn :accessor spawn-fn
-              :initarg :spawn-fn) ;; Returns number of spawned tasks
    (%done-fn :accessor done-fn
              :initarg :done-fn))  ;; Return value is ignored
   (:default-initargs :fetch-fn (constantly nil) :merge-fn (constantly nil)
-                     :spawn-fn (constantly 0) :done-fn (constantly nil)))
+                     :done-fn (constantly nil)))
 
 (declaim (inline network-wave-debug))
 
@@ -89,12 +103,9 @@
       (debug "fetched")
       (when (apply (merge-fn wave) data)
         (debug "merged"))
-      (let ((n (apply (spawn-fn wave) wave data)))
-        (when (/= n 0)
-          (debug (format nil "~D tasks spawned" n))))
       (apply (done-fn wave) data)
       (debug "done")
-      t)))
+      (values t data))))
 
 ;;; HANDLED-NETWORK-WAVE
 

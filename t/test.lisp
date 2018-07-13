@@ -2,6 +2,7 @@
 
 (defpackage #:waveflow/test
   (:use #:cl
+        #:alexandria
         #:waveflow
         #:protest/1am
         #:named-readtables)
@@ -12,7 +13,9 @@
 (in-readtable protest/1am)
 
 (defmacro with-clean-state (&body body)
-  `(let ((*waves* (make-hash-table))) ,@body))
+  `(let ((*waves* (make-hash-table))
+         (*flows* (make-hash-table)))
+     ,@body))
 
 ;;; TEST-FIND-WAVE
 
@@ -103,12 +106,32 @@
                                       (declare (ignore args))
                                       (push ,x result) ,y)))
       (let* ((result '())
-             (expected '(:done-fn :spawn-fn :merge-fn :fetch-fn))
+             (expected '(:done-fn :merge-fn :fetch-fn))
              (wave #1?(make-instance 'network-wave :name '#1=#.(gensym)
                                      :fetch-fn (fn :fetch-fn)
                                      :merge-fn (fn :merge-fn)
-                                     :spawn-fn (fn :spawn-fn 0)
                                      :done-fn (fn :done-fn))))
         #2?(let ((*standard-output* (make-broadcast-stream)))
              (is (eql t (execute-wave wave))))
         #3?(progn (is (null (set-difference result expected))))))))
+
+(define-test-case test-make-flow ()
+  1 "Create a new flow with four waves."
+  2 "Execute the flow."
+  3 "Assert that the flow has been executed.")
+
+(define-test test-make-flow
+  (with-clean-state
+    (let* ((result '())
+           (waves '(foo bar baz quux))
+           (expected (reverse waves))
+           (edges '((foo bar) (bar quux) (foo baz) (baz quux))))
+      (flet ((make-wave (thing)
+               (make-instance 'callback-wave :name thing
+                                             :callback (lambda (&rest args)
+                                                         (push thing result)
+                                                         (values t args)))))
+        (mapc #'make-wave waves)
+        (let ((flow #1?(make-instance 'flow :name 'frob :waves edges)))
+          #2?(execute-flow flow)
+          #3?(is (equal result expected)))))))
