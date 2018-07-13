@@ -90,8 +90,12 @@
 
 (define-test test-make-handled-wave
   (with-clean-state
-    (let ((wave #1?(make-instance 'erroring-wave :name '#1=#.(gensym))))
-      #3?(is (null #2?(execute-wave wave))))))
+    (let* ((result nil)
+           (fn (lambda (&rest x) (declare (ignore x)) (setf result t)))
+           (wave #1?(make-instance 'erroring-wave :name 'foo :error-fn fn)))
+      (handler-bind ((warning #'muffle-warning))
+        #2?(execute-wave wave)
+        #3?(is result)))))
 
 ;;; TEST-MAKE-NETWORK-WAVE
 

@@ -21,8 +21,8 @@
                    (bt:with-lock-held (lock) (push (print thing) result))
                    (values t args)))
                (make-wave (thing)
-                 (make-instance 'async-callback-wave :name thing
-                                                     :callback (fn thing)))
+                 (make-instance 'async-callback-wave
+                                :name thing :callback (fn thing)))
                (check-result ()
                  (and (= (length result) 4)
                       (eq (first result) 'quux)

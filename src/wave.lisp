@@ -95,11 +95,15 @@ value contains data returned from the wave."))
 
 ;;; HANDLED-WAVE
 
-(defclass handled-wave (logged-wave executable-wave) ())
+(defclass handled-wave (logged-wave executable-wave)
+  ((%error-fn :accessor error-fn
+              :initarg :error-fn))
+  (:default-initargs :error-fn (constantly nil)))
 
 (defmethod execute-wave :around ((wave handled-wave) &rest args)
   (handler-case (call-next-method)
     (error (e)
+      (funcall (error-fn wave) args)
       (logger wave :error *wave-format*
               (description wave) (name wave) (first args) e)
       (values nil nil))))
