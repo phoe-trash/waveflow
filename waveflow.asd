@@ -11,8 +11,7 @@
   :components ((:file "src/package")
                (:file "src/wave")
                (:file "src/flow")
-               ;; (:file "src/waveflow")
-               ))
+               (:file "src/waveflow")))
 
 (asdf:defsystem #:waveflow/test
   :description "Test system for Waveflow"

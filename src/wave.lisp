@@ -23,8 +23,12 @@
           :initarg :name)
    (%description :accessor description
                  :initarg :description))
-  (:default-initargs :name (error "Must provide NAME.")
+  (:default-initargs :name (waveflow-error "Must provide NAME.")
                      :description "Anonymous wave"))
+
+(defmethod print-object ((object wave) stream)
+  (print-unreadable-object (object stream :type t)
+    (princ (name object) stream)))
 
 (defmethod initialize-instance :after ((wave wave) &key)
   (check-type (name wave) symbol)
@@ -51,11 +55,15 @@
 (defgeneric execute-wave (wave &rest args)
   (:documentation "Returns two values: the first is true if execution was
 successful, otherwise is false. If execution was successful, then the second
-value contains data returned from the wave."))
-;; TODO rethink this; we have no means of fetching the values back from the wave
+value contains data returned from the wave; if not, it contains debugging
+information, such as errors that were signaled."))
+
+(defmethod execute-wave ((wave symbol) &rest args)
+  (apply #'execute-wave (find-wave wave) args))
 
 (defmethod execute-wave ((wave executable-wave) &rest args)
-  (warn "Default method for EXECUTE-WAVE called with args ~S." args)
+  (warn "Default method on EXECUTE-WAVE called on wave ~S~@[ and args ~S~]."
+        (name wave) args)
   (values t nil))
 
 (defvar *executed-waves*)
@@ -103,10 +111,10 @@ value contains data returned from the wave."))
 (defmethod execute-wave :around ((wave handled-wave) &rest args)
   (handler-case (call-next-method)
     (error (e)
-      (funcall (error-fn wave) args)
       (logger wave :error *wave-format*
               (description wave) (name wave) (first args) e)
-      (values nil nil))))
+      (funcall (error-fn wave) e args)
+      (values nil e))))
 
 ;;; NETWORK-WAVE
 

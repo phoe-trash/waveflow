@@ -7,6 +7,7 @@
   (:export
    #:*waves*
    #:*flows*
+   #:waveflow-error
    #:wave
    #:name
    #:description
@@ -20,6 +21,7 @@
    #:handled-network-wave
    #:find-wave
    #:flow
+   #:find-flow
    #:spawn-fn
    #:waves
    #:execute-flow))

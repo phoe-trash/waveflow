@@ -42,8 +42,8 @@
 
 (define-test test-make-wave-error
   (with-clean-state
-    #1?(signals error (make-instance 'wave))
-    #2?(signals error (make-instance 'wave :name 42))))
+    #1?(signals waveflow-error (make-instance 'wave))
+    #2?(signals waveflow-error (make-instance 'wave :name 42))))
 
 ;;; TEST-MAKE-LOGGED-WAVE
 
@@ -119,6 +119,8 @@
              (is (eql t (execute-wave wave))))
         #3?(progn (is (null (set-difference result expected))))))))
 
+;;; TEST-MAKE-FLOW
+
 (define-test-case test-make-flow ()
   1 "Create a new flow with four waves."
   2 "Execute the flow."
@@ -139,3 +141,23 @@
         (let ((flow #1?(make-instance 'flow :name 'frob :waves edges)))
           #2?(execute-flow flow)
           #3?(is (equal result expected)))))))
+
+(define-test-case test-make-flow-fail-second-wave ()
+  1 "Create a new flow with three waves, the second one being unsuccessful."
+  2 "Execute the flow."
+  3 "Assert that the third wave has not been executed.")
+
+(define-test test-make-flow-fail-second-wave
+  (with-clean-state
+    (let* ((edges '((foo bar) (bar baz)))
+           (error-callback (lambda (&rest args) (declare (ignore args))
+                             (error "Should not reach this place."))))
+      (labels ((make-fn (x y) (lambda (&rest args) (declare (ignore args))
+                                (values x y)))
+               (make-wave (name fn)
+                 (make-instance 'callback-wave :name name :callback fn)))
+        (make-wave 'foo (make-fn t nil))
+        (make-wave 'bar (make-fn nil nil))
+        (make-wave 'baz error-callback)
+        (let ((flow #1?(make-instance 'flow :name 'frob :waves edges)))
+          #3?(signals waveflow-error #2?(execute-flow flow)))))))

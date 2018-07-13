@@ -2,6 +2,22 @@
 
 (in-package #:waveflow)
 
+;;; WAVEFLOW-ERROR
+
+(define-condition waveflow-error (error) ())
+
+(define-condition simple-waveflow-error (waveflow-error simple-condition) ())
+
+(declaim (inline waveflow-error))
+
+(defun waveflow-error (format-control &rest args)
+  (error (make-condition 'simple-waveflow-error
+                         :format-control format-control
+                         :format-arguments args)))
+
+(defvar *waveflow-error-format*
+  "Wave ~S finished unsuccessfully with arguments ~S.")
+
 ;;; FIND-FLOW and (SETF FIND-FLOW)
 
 (defvar *flows* (make-hash-table))
@@ -25,9 +41,13 @@
               :initarg :spawn-fn)
    (%waves :accessor waves
            :initarg :waves))
-  (:default-initargs :name (error "Must provide NAME.")
-                     :waves (error "Must provide WAVES.")
+  (:default-initargs :name (waveflow-error "Must provide NAME.")
+                     :waves (waveflow-error "Must provide WAVES.")
                      :spawn-fn #'execute-wave))
+
+(defmethod print-object ((object flow) stream)
+  (print-unreadable-object (object stream :type t)
+    (princ (name object) stream)))
 
 (defun wave-dependency-list-p (list)
   (and (listp list)
@@ -44,7 +64,7 @@
   (assert (wave-dependency-list-p (waves flow)) ((waves flow))
           "Invalid wave dependency list: ~S" (waves flow))
   (multiple-value-bind (cyclicp symbol) (circular-graph-p (waves flow))
-    (when cyclicp (error "Cycle detected for wave ~S." symbol)))
+    (when cyclicp (waveflow-error "Cycle detected for wave ~S." symbol)))
   (when (nth-value 1 (gethash (name flow) *flows*))
     (warn "Redefining flow ~S" (name flow)))
   (setf (gethash (name flow) *flows*) flow))
@@ -55,6 +75,9 @@
 
 (defgeneric execute-flow (flow &rest args)
   (:documentation "Returns no meaningful value."))
+
+(defmethod execute-flow ((flow symbol) &rest args)
+  (apply #'execute-flow (find-flow flow) args))
 
 (defmethod execute-flow :around ((flow flow) &rest args)
   (declare (ignore args))
@@ -70,6 +93,8 @@
     (loop for root in roots
           do (apply spawn-fn root args))))
 
+(declaim (inline flow-dependencies-dependents))
+
 (defun flow-dependencies-dependents (wave)
   (loop with name = (name wave)
         for (dependency dependent) in (waves *current-flow*)
@@ -84,13 +109,15 @@
       (call-next-method)
       (multiple-value-bind (dependencies dependents)
           (flow-dependencies-dependents wave)
-        ;; TODO not thread-safe
         (when (compute-execution-status wave dependencies)
-          (prog1 (call-next-method)
+          (multiple-value-bind (successp data) (call-next-method)
             (after-execution wave dependencies)
+            (unless successp
+              (waveflow-error *waveflow-error-format* wave args))
             (loop with spawn-fn = (spawn-fn *current-flow*)
                   for wave in (mapcar #'find-wave dependents)
-                  do (apply spawn-fn wave args)))))))
+                  do (apply spawn-fn wave args))
+            (values successp data))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; TODO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
