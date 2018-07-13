@@ -20,8 +20,11 @@
 
 (defclass wave ()
   ((%name :accessor name
-          :initarg :name))
-  (:default-initargs :name (error "Must provide NAME.")))
+          :initarg :name)
+   (%description :accessor description
+                 :initarg :description))
+  (:default-initargs :name (error "Must provide NAME.")
+                     :description "Anonymous wave"))
 
 (defmethod initialize-instance :after ((wave wave) &key)
   (check-type (name wave) symbol)
@@ -55,6 +58,30 @@ value contains data returned from the wave."))
   (warn "Default method for EXECUTE-WAVE called with args ~S." args)
   (values t nil))
 
+(defvar *executed-waves*)
+
+(defvar *executing-waves*)
+
+(defgeneric compute-execution-status (wave dependencies)
+  (:documentation "Returns if the wave should be "))
+
+(defmethod compute-execution-status ((wave executable-wave) dependencies)
+  (dolist (dependency dependencies)
+    (unless (gethash dependency *executed-waves*)
+      (return-from compute-execution-status nil)))
+  (when (or (gethash (name wave) *executing-waves*)
+            (gethash (name wave) *executed-waves*))
+    (return-from compute-execution-status nil))
+  (setf (gethash (name wave) *executing-waves*) t)
+  t)
+
+(defgeneric after-execution (wave dependencies)
+  (:documentation "Side effects after wave execution."))
+
+(defmethod after-execution ((wave executable-wave) dependencies)
+  (declare (ignore dependencies))
+  (setf (gethash (name wave) *executed-waves*) t))
+
 ;;; CALLBACK-WAVE
 
 (defclass callback-wave (executable-wave)
@@ -74,7 +101,7 @@ value contains data returned from the wave."))
   (handler-case (call-next-method)
     (error (e)
       (logger wave :error *wave-format*
-              (class-name (class-of wave)) (name wave) (first args) e)
+              (description wave) (name wave) (first args) e)
       (values nil nil))))
 
 ;;; NETWORK-WAVE
@@ -93,7 +120,7 @@ value contains data returned from the wave."))
 
 (defun network-wave-debug (wave first-arg)
   (lambda (message)
-    (logger wave :debug *wave-format* (class-name (class-of wave))
+    (logger wave :debug *wave-format* (description wave)
             (name wave) first-arg message)))
 
 (defmethod execute-wave ((wave network-wave) &rest args)

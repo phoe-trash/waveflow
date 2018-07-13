@@ -9,6 +9,7 @@
    #:*flows*
    #:wave
    #:name
+   #:description
    #:logged-wave
    #:logger
    #:executable-wave

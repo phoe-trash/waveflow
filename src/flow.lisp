@@ -53,14 +53,13 @@
 
 (defvar *current-flow*)
 
-(defvar *executed-waves*)
-
 (defgeneric execute-flow (flow &rest args)
   (:documentation "Returns no meaningful value."))
 
 (defmethod execute-flow :around ((flow flow) &rest args)
   (declare (ignore args))
   (let ((*current-flow* flow)
+        (*executing-waves* (make-hash-table))
         (*executed-waves* (make-hash-table)))
     (call-next-method)
     (values)))
@@ -81,20 +80,17 @@
         finally (return (values dependencies dependents))))
 
 (defmethod execute-wave :around ((wave executable-wave) &rest args)
-  ;; TODO this will break for async - create ASYNC-WAVE
   (if (not (boundp '*current-flow*))
       (call-next-method)
       (multiple-value-bind (dependencies dependents)
           (flow-dependencies-dependents wave)
-        (dolist (dependency dependencies)
-          (unless (gethash dependency *executed-waves*)
-            (return-from execute-wave)))
-        (setf (gethash (name wave) *executed-waves*) t)
-        (call-next-method)
-        (prog1 (call-next-method)
-          (loop with spawn-fn = (spawn-fn *current-flow*)
-                for wave in (mapcar #'find-wave dependents)
-                do (apply spawn-fn wave args))))))
+        ;; TODO not thread-safe
+        (when (compute-execution-status wave dependencies)
+          (prog1 (call-next-method)
+            (after-execution wave dependencies)
+            (loop with spawn-fn = (spawn-fn *current-flow*)
+                  for wave in (mapcar #'find-wave dependents)
+                  do (apply spawn-fn wave args)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; TODO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
