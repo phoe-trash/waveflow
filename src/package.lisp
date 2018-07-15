@@ -23,4 +23,6 @@
    #:*flows* #:find-flow
    ;; FLOW
    #:flow #:name #:spawn-fn #:waves #:execute-flow
+   ;; MACROS
+   #:define-wave #:define-flow
    ))

@@ -9,12 +9,6 @@
 Waveflow is a task orchestration library for Common Lisp. It is a framework
 for expressing complex workflows by means of waves and flows.
 
-
-
-A flow is an object representing a whole workflow, understood as a collection of
-waves and dependencies between them, as well as metadata about how they should
-be executed.
-
 Waveflow exposes several default subtypes of waves and flows for general usage.
 You can access them by loading the `WAVEFLOW` ASDF system and using the
 `WAVEFLOW` package.
@@ -131,30 +125,20 @@ concurrently.
 
   * **Class `FLOW`**
 
+    A flow is an object representing a whole workflow, understood as a
+    collection of waves and dependencies between them, as well as metadata about
+    how they should be executed.
+
     Accessors:
     * **Reader `NAME`**
     * **Accessor `SPAWN-FN`**
     * **Acccessor `WAVES`**
-### Variables
 
-  * **Variable `*WAVES*`**
+### Macros
 
-    Its value is a hash-table mapping from symbols naming the waves to the wave
-    objects themselves.
+  * **Macro `DEFINE-WAVE`**
 
-    By default, the value of `*WAVES*` is an empty hash table.
-
-  * **Variable `*FLOWS*`**
-
-    Its value is a hash-table mapping from symbols naming the flows to the flow
-    objects themselves.
-
-    By default, the value of `*FLOWS*` is an empty hash table.
-
-### Classes
-
-### Generic Functions
-
+  * **Macro `DEFINE-FLOW`**
 
 ### Generic Functions
 
