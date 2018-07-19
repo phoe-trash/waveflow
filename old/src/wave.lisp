@@ -1,34 +1,34 @@
 ;;;; wave.lisp
 
-(in-package #:waveflow)
+;; (in-package #:waveflow)
 
 ;;; FIND-WAVE and (SETF FIND-WAVE)
 
-(defvar *waves* (make-hash-table))
+;; (defvar *waves* (make-hash-table))
 
-(defun find-wave (name)
-  (values (gethash name *waves*)))
+;; (defun find-wave (name)
+;;   (values (gethash name *waves*)))
 
-(defun (setf find-wave) (new-value name)
-  (check-type new-value (or null wave))
-  (if new-value
-      (setf (gethash name *waves*) new-value)
-      (remhash name *waves*))
-  new-value)
+;; (defun (setf find-wave) (new-value name)
+;;   (check-type new-value (or null wave))
+;;   (if new-value
+;;       (setf (gethash name *waves*) new-value)
+;;       (remhash name *waves*))
+;;   new-value)
 
 ;;; WAVE
 
-(defclass wave ()
-  ((%name :accessor name
-          :initarg :name)
-   (%description :accessor description
-                 :initarg :description))
-  (:default-initargs :name (waveflow-error "Must provide NAME.")
-                     :description "Anonymous wave"))
+;; (defclass wave ()
+;;   ((%name :accessor name
+;;           :initarg :name)
+;;    (%description :accessor description
+;;                  :initarg :description))
+;;   (:default-initargs :name (waveflow-error "Must provide NAME.")
+;;                      :description "Anonymous wave"))
 
-(defmethod print-object ((object wave) stream)
-  (print-unreadable-object (object stream :type t)
-    (princ (name object) stream)))
+;; (defmethod print-object ((object wave) stream)
+;;   (print-unreadable-object (object stream :type t)
+;;     (princ (name object) stream)))
 
 (defmethod initialize-instance :after ((wave wave) &key)
   (check-type (name wave) symbol)
@@ -38,57 +38,57 @@
 
 ;;; LOGGED-WAVE
 
-(defparameter *wave-format* "~@[~A~] ~A~@[ for ~A~]: ~A.~%")
+;; (defparameter *wave-format* "~@[~A~] ~A~@[ for ~A~]: ~A.~%")
 
-(defclass logged-wave (wave) ())
+;; (defclass logged-wave (wave) ())
 
-(defgeneric logger (wave severity format-control &rest format-args)
-  (:method ((wave logged-wave) severity format-control &rest format-args)
-    (let* ((severity (format nil "[~8A] " severity))
-           (format-control (concatenate 'string severity format-control)))
-      (apply #'format t format-control format-args))))
+;; (defgeneric logger (wave severity format-control &rest format-args)
+;;   (:method ((wave logged-wave) severity format-control &rest format-args)
+;;     (let* ((severity (format nil "[~8A] " severity))
+;;            (format-control (concatenate 'string severity format-control)))
+;;       (apply #'format t format-control format-args))))
 
 ;;; EXECUTABLE-WAVE
 
-(defclass executable-wave (wave) ())
+;; (defclass executable-wave (wave) ())
 
-(defgeneric execute-wave (wave &rest args)
-  (:documentation "Returns two values: the first is true if execution was
-successful, otherwise is false. If execution was successful, then the second
-value contains data returned from the wave; if not, it contains debugging
-information, such as errors that were signaled."))
+;; (defgeneric execute-wave (wave &rest args)
+;;   (:documentation "Returns two values: the first is true if execution was
+;; successful, otherwise is false. If execution was successful, then the second
+;; value contains data returned from the wave; if not, it contains debugging
+;; information, such as errors that were signaled."))
 
-(defmethod execute-wave ((wave symbol) &rest args)
-  (apply #'execute-wave (find-wave wave) args))
+;; (defmethod execute-wave ((wave symbol) &rest args)
+;;   (apply #'execute-wave (find-wave wave) args))
 
-(defmethod execute-wave ((wave executable-wave) &rest args)
-  (warn "Default method on EXECUTE-WAVE called on wave ~S~@[ and args ~S~]."
-        (name wave) args)
-  (values t nil))
+;; (defmethod execute-wave ((wave executable-wave) &rest args)
+;;   (warn "Default method on EXECUTE-WAVE called on wave ~S~@[ and args ~S~]."
+;;         (name wave) args)
+;;   (values t nil))
 
-(defvar *executed-waves*)
+;; (defvar *executed-waves*)
 
-(defvar *executing-waves*)
+;; (defvar *executing-waves*)
 
-(defgeneric compute-execution-status (wave dependencies)
-  (:documentation "Returns if the wave should be "))
+;; (defgeneric compute-execution-status (wave dependencies)
+;;   (:documentation "Returns if the wave should be "))
 
-(defmethod compute-execution-status ((wave executable-wave) dependencies)
-  (dolist (dependency dependencies)
-    (unless (gethash dependency *executed-waves*)
-      (return-from compute-execution-status nil)))
-  (when (or (gethash (name wave) *executing-waves*)
-            (gethash (name wave) *executed-waves*))
-    (return-from compute-execution-status nil))
-  (setf (gethash (name wave) *executing-waves*) t)
-  t)
+;; (defmethod compute-execution-status ((wave executable-wave) dependencies)
+;;   (dolist (dependency dependencies)
+;;     (unless (gethash dependency *executed-waves*)
+;;       (return-from compute-execution-status nil)))
+;;   (when (or (gethash (name wave) *executing-waves*)
+;;             (gethash (name wave) *executed-waves*))
+;;     (return-from compute-execution-status nil))
+;;   (setf (gethash (name wave) *executing-waves*) t)
+;;   t)
 
-(defgeneric after-execution (wave dependencies)
-  (:documentation "Side effects after wave execution."))
+;; (defgeneric after-execution (wave dependencies)
+;;   (:documentation "Side effects after wave execution."))
 
-(defmethod after-execution ((wave executable-wave) dependencies)
-  (declare (ignore dependencies))
-  (setf (gethash (name wave) *executed-waves*) t))
+;; (defmethod after-execution ((wave executable-wave) dependencies)
+;;   (declare (ignore dependencies))
+;;   (setf (gethash (name wave) *executed-waves*) t))
 
 ;;; CALLBACK-WAVE
 
@@ -103,18 +103,18 @@ information, such as errors that were signaled."))
 
 ;;; HANDLED-WAVE
 
-(defclass handled-wave (logged-wave executable-wave)
-  ((%error-fn :accessor error-fn
-              :initarg :error-fn))
-  (:default-initargs :error-fn (constantly nil)))
+;; (defclass handled-wave (logged-wave executable-wave)
+;;   ((%error-fn :accessor error-fn
+;;               :initarg :error-fn))
+;;   (:default-initargs :error-fn (constantly nil)))
 
-(defmethod execute-wave :around ((wave handled-wave) &rest args)
-  (handler-case (call-next-method)
-    (error (e)
-      (logger wave :error *wave-format*
-              (description wave) (name wave) (first args) e)
-      (funcall (error-fn wave) e args)
-      (values nil e))))
+;; (defmethod execute-wave :around ((wave handled-wave) &rest args)
+;;   (handler-case (call-next-method)
+;;     (error (e)
+;;       (logger wave :error *wave-format*
+;;               (description wave) (name wave) (first args) e)
+;;       (funcall (error-fn wave) e args)
+;;       (values nil e))))
 
 ;;; NETWORK-WAVE
 

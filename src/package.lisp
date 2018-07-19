@@ -9,6 +9,7 @@
    #:*waves* #:find-wave
    ;; WAVE
    #:wave #:name #:description #:logger #:execute-wave #:error-fn
+   ;; TODO test all symbols below this line
    ;; CALLBACK WAVE
    #:callback-wave #:callback
    ;; RETRY-WAVE
