@@ -9,6 +9,7 @@
    #:*waves* #:find-wave
    ;; WAVE
    #:wave #:name #:description #:logger #:execute-wave #:error-fn
+   #:ensure-wave #:define-wave
    ;; TODO test all symbols below this line
    ;; CALLBACK WAVE
    #:callback-wave #:callback
@@ -24,6 +25,5 @@
    #:*flows* #:find-flow
    ;; FLOW
    #:flow #:name #:spawn-fn #:waves #:execute-flow
-   ;; MACROS
-   #:define-wave #:define-flow
+   #:ensure-flow #:define-flow
    ))

@@ -100,3 +100,13 @@ its dependencies have been executed."))
       (logger wave :error *wave-format*
               (description wave) (name wave) (first args) e)
       (funcall (error-fn wave) wave e args))))
+
+;;; CALLBACK-WAVE
+
+(defclass callback-wave (executable-wave)
+  ((%callback :accessor callback
+              :initarg :callback))
+  (:default-initargs :callback (constantly* t t)))
+
+(defmethod execute-wave ((wave callback-wave) &rest args)
+  (apply (callback wave) wave args))

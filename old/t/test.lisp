@@ -1,38 +1,38 @@
 ;;;; test.lisp
 
-(defpackage #:waveflow/test
-  (:use #:cl
-        #:alexandria
-        #:waveflow
-        #:protest/1am
-        #:named-readtables)
-  (:import-from #:protest/test-case
-                #:define-test-case))
+;; (defpackage #:waveflow/test
+;;   (:use #:cl
+;;         #:alexandria
+;;         #:waveflow
+;;         #:protest/1am
+;;         #:named-readtables)
+;;   (:import-from #:protest/test-case
+;;                 #:define-test-case))
 
-(in-package #:waveflow/test)
-(in-readtable protest/1am)
+;; (in-package #:waveflow/test)
+;; (in-readtable protest/1am)
 
-(defmacro with-clean-state (&body body)
-  `(let ((*waves* (make-hash-table))
-         (*flows* (make-hash-table)))
-     ,@body))
+;; (defmacro with-clean-state (&body body)
+;;   `(let ((*waves* (make-hash-table))
+;;          (*flows* (make-hash-table)))
+;;      ,@body))
 
 ;;; TEST-FIND-WAVE
 
-(define-test-case test-find-wave ()
-  1 "Create a new wave."
-  2 "Assign the wave via SETF FIND-WAVE."
-  3 "Assert that it is retrieved via FIND-WAVE."
-  4 "Delete the wave via SETF FIND-WAVE."
-  5 "Assert that it is not retrieved via FIND-WAVE.")
+;; (define-test-case test-find-wave ()
+;;   1 "Create a new wave."
+;;   2 "Assign the wave via SETF FIND-WAVE."
+;;   3 "Assert that it is retrieved via FIND-WAVE."
+;;   4 "Delete the wave via SETF FIND-WAVE."
+;;   5 "Assert that it is not retrieved via FIND-WAVE.")
 
-(define-test test-find-wave
-  (with-clean-state
-    (let ((wave #1?(make-instance 'wave :name '#1=#.(gensym))))
-      #2?(setf (find-wave '#1#) wave)
-      #3?(is (eq (find-wave '#1#) wave))
-      #4?(setf (find-wave '#1#) nil)
-      #5?(is (null (find-wave '#1#))))))
+;; (define-test test-find-wave
+;;   (with-clean-state
+;;     (let ((wave #1?(make-instance 'wave :name '#1=#.(gensym))))
+;;       #2?(setf (find-wave '#1#) wave)
+;;       #3?(is (eq (find-wave '#1#) wave))
+;;       #4?(setf (find-wave '#1#) nil)
+;;       #5?(is (null (find-wave '#1#))))))
 
 ;;; TEST-MAKE-WAVE-ERROR
 
@@ -43,33 +43,33 @@
 (define-test test-make-wave-error
   (with-clean-state
     #1?(signals waveflow-error (make-instance 'wave))
-    #2?(signals waveflow-error (make-instance 'wave :name 42))))
+    #2?(signals waveflow-error (make-instance 'wave :name ))))
 
 ;;; TEST-MAKE-LOGGED-WAVE
 
-(define-test-case test-make-logged-wave ()
-  1 "Create a new logged wave."
-  2 "Invoke the wave's logger."
-  3 "Assert that the message has been logged.")
+;; (define-test-case test-make-logged-wave ()
+;;   1 "Create a new logged wave."
+;;   2 "Invoke the wave's logger."
+;;   3 "Assert that the message has been logged.")
 
-(define-test test-make-logged-wave
-  (with-clean-state
-    (let* ((wave #1?(make-instance 'logged-wave :name '#1=#.(gensym)))
-           (string (with-output-to-string (*standard-output*)
-                     #2?(logger wave :foo "~A BAZ" :bar))))
-      #3?(is (string= string "[FOO     ] BAR BAZ")))))
+;; (define-test test-make-logged-wave
+;;   (with-clean-state
+;;     (let* ((wave #1?(make-instance 'logged-wave :name '#1=#.(gensym)))
+;;            (string (with-output-to-string (*standard-output*)
+;;                      #2?(logger wave :foo "~A BAZ" :bar))))
+;;       #3?(is (string= string "[FOO     ] BAR BAZ")))))
 
 ;;; TEST-MAKE-EXECUTABLE-WAVE
 
-(define-test-case test-make-executable-wave ()
-  1 "Create a new executable wave."
-  2 "Execute the wave."
-  3 "Assert that the wave's default method has been executed.")
+;; (define-test-case test-make-executable-wave ()
+;;   1 "Create a new executable wave."
+;;   2 "Execute the wave."
+;;   3 "Assert that the wave's default method has been executed.")
 
-(define-test test-make-executable-wave
-  (with-clean-state
-    (let ((wave #1?(make-instance 'executable-wave :name '#1=#.(gensym))))
-      #3?(signals warning #2?(execute-wave wave)))))
+;; (define-test test-make-executable-wave
+;;   (with-clean-state
+;;     (let ((wave #1?(make-instance 'executable-wave :name '#1=#.(gensym))))
+;;       #3?(signals warning #2?(execute-wave wave)))))
 
 ;;; TEST-MAKE-HANDLED-WAVE
 

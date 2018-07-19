@@ -1,5 +1,7 @@
 ;;;; test.lisp
 
+;;; TODO negative tests
+
 (defpackage #:waveflow/test
   (:use #:cl
         #:alexandria
@@ -21,7 +23,7 @@
 
 ;;; TEST-WAVE
 
-(define-test-case test-wave ()
+(define-test-case test-wave () ;; TODO fix
   1 "Create a new wave."
   2 "Assign the wave via SETF FIND-WAVE."
   3 "Assert that it is retrieved via FIND-WAVE."
@@ -46,3 +48,5 @@
       (signals warning (execute-wave wave))
       (setf (find-wave name) nil)
       (is (null (find-wave name))))))
+
+;;; TEST-CALLBACK-WAVE

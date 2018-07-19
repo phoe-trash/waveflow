@@ -92,14 +92,14 @@
 
 ;;; CALLBACK-WAVE
 
-(defclass callback-wave (executable-wave)
-  ((%callback :accessor callback
-              :initarg :callback))
-  (:default-initargs
-   :callback (lambda (&rest args) (declare (ignore args)) (values t t))))
+;; (defclass callback-wave (executable-wave)
+;;   ((%callback :accessor callback
+;;               :initarg :callback))
+;;   (:default-initargs
+;;    :callback (lambda (&rest args) (declare (ignore args)) (values t t))))
 
-(defmethod execute-wave ((wave callback-wave) &rest args)
-  (apply (callback wave) wave args))
+;; (defmethod execute-wave ((wave callback-wave) &rest args)
+;;   (apply (callback wave) wave args))
 
 ;;; HANDLED-WAVE
 
