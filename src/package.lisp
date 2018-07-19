@@ -10,9 +10,9 @@
    ;; WAVE
    #:wave #:name #:description #:logger #:execute-wave #:error-fn
    #:ensure-wave #:define-wave
-   ;; TODO test all symbols below this line
    ;; CALLBACK WAVE
    #:callback-wave #:callback
+   ;; TODO test all symbols below this line
    ;; RETRY-WAVE
    #:retry-wave #:retry-count #:retry-fn
    ;; WRAPPED-WAVE

@@ -103,10 +103,33 @@ its dependencies have been executed."))
 
 ;;; CALLBACK-WAVE
 
-(defclass callback-wave (executable-wave)
+(defclass callback-wave (wave)
   ((%callback :accessor callback
               :initarg :callback))
   (:default-initargs :callback (constantly* t t)))
 
 (defmethod execute-wave ((wave callback-wave) &rest args)
   (apply (callback wave) wave args))
+
+;;; RETRY-WAVE
+
+(defclass retry-wave (callback-wave)
+  ((%retry-count :accessor retry-count
+                 :initarg :retry-count)
+   (%retry-fn :accessor retry-fn
+              :initarg :retry-fn))
+  (:default-initargs :retry-count 0
+                     :retry-fn (constantly nil)))
+
+(defmethod execute-wave ((wave retry-wave) &rest args)
+  (let ((count (retry-count wave)))
+    (tagbody start
+       (multiple-value-bind (successp value) (call-next-method)
+         (cond (successp
+                (return-from execute-wave (values t value)))
+               ((positive-integer-p count)
+                (decf count)
+                (apply (retry-fn wave) wave args)
+                (go start))
+               (t
+                (return-from execute-wave (values nil value))))))))
