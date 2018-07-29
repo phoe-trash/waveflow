@@ -23,14 +23,9 @@
   ((%name :accessor name
           :initarg :name)
    (%description :accessor description
-                 :initarg :description)
-   (%error-fn :accessor error-fn
-              :initarg :error-fn))
+                 :initarg :description))
   (:default-initargs :name nil
-                     :description nil
-                     :error-fn (lambda (wave condition &rest args)
-                                 (declare (ignore wave args))
-                                 (values nil condition))))
+                     :description nil))
 
 (defmethod initialize-instance :after ((wave wave) &key)
   (check-type (name wave) symbol)
@@ -59,54 +54,48 @@
   (:documentation "Returns two values: the first is true if execution was
 successful, otherwise is false. If execution was successful, then the second
 value contains data returned from the wave; if not, it contains debugging
-information, such as errors that were signaled."))
+information, such as errors that were signaled.")
+  (:method ((wave symbol) &rest args)
+    (apply #'execute-wave (find-wave wave) args))
+  (:method ((wave wave) &rest args)
+    (warn "EXECUTE-WAVE, default method: wave ~S~@[ and args ~S~]." wave args))
+  (:method :around ((wave wave) &rest args)
+    (flet ((handler (e)
+             (logger wave :error *wave-format*
+                     (description wave) (name wave) (first args) e)
+             (error (make-condition 'wave-failure :wave wave :reason e))))
+      (handler-bind ((error #'handler))
+        (call-next-method)))))
 
-(defmethod execute-wave ((wave symbol) &rest args)
-  (apply #'execute-wave (find-wave wave) args))
+;;; WAVE-FAILURE
 
-(defmethod execute-wave ((wave wave) &rest args)
-  (warn "Default EXECUTE-WAVE method called on wave ~S~@[ and args ~S~]."
-        (name wave) args)
-  (values t nil))
+(define-condition wave-failure (error) ;; TODO waveflow-error
+  ((%wave :reader wave
+          :initarg :wave)
+   (%reason :reader reason
+            :initarg :reason))
+  (:default-initargs :wave (error "Must provide WAVE.")
+                     :reason nil)
+  (:report (lambda (condition stream)
+             (format stream "Failed to execute wave ~A.~@[~%Reason: ~A~]"
+                     (wave condition) (reason condition)))))
 
-(defvar *executed-waves*)
-
-(defvar *executing-waves*)
-
-(defgeneric compute-execution-status (wave dependencies)
-  (:documentation "Returns if the wave should be executed now based on whether
-its dependencies have been executed."))
-
-(defmethod compute-execution-status ((wave wave) dependencies)
-  (dolist (dependency dependencies)
-    (unless (gethash dependency *executed-waves*)
-      (return-from compute-execution-status nil)))
-  (when (or (gethash (name wave) *executing-waves*)
-            (gethash (name wave) *executed-waves*))
-    (return-from compute-execution-status nil))
-  (setf (gethash (name wave) *executing-waves*) t)
-  t)
-
-(defgeneric after-execution (wave dependencies)
-  (:documentation "Side effects after wave execution."))
-
-(defmethod after-execution ((wave wave) dependencies)
-  (declare (ignore dependencies))
-  (setf (gethash (name wave) *executed-waves*) t))
-
-(defmethod execute-wave :around ((wave wave) &rest args)
-  (handler-case (call-next-method)
-    (error (e)
-      (logger wave :error *wave-format*
-              (description wave) (name wave) (first args) e)
-      (funcall (error-fn wave) wave e args))))
+;; (defmethod print-object ((object wave-failure) stream)
+;;   (if *print-escape*
+;;       (call-next-method)
+;;       (print-unreadable-object (object stream :type t)
+;;         (with-accessors ((name name) (description description)) (wave object)
+;;           (if name
+;;               (princ name stream)
+;;               (princ "(anonymous)" stream))
+;;           (when description (format stream " (~A)" description))))))
 
 ;;; CALLBACK-WAVE
 
 (defclass callback-wave (wave)
   ((%callback :accessor callback
               :initarg :callback))
-  (:default-initargs :callback (constantly* t t)))
+  (:default-initargs :callback (constantly nil)))
 
 (defmethod execute-wave ((wave callback-wave) &rest args)
   (apply (callback wave) wave args))
@@ -118,18 +107,89 @@ its dependencies have been executed."))
                  :initarg :retry-count)
    (%retry-fn :accessor retry-fn
               :initarg :retry-fn))
-  (:default-initargs :retry-count 0
+  (:default-initargs :retry-count 1
                      :retry-fn (constantly nil)))
 
+(defparameter *retry-wave-failure-string*
+  "Failed to execute wave ~A~@[ after ~D retries~].~@[~%Reason: ~A~]")
+
+(define-condition retry-wave-failure (wave-failure) ()
+  (:report (lambda (condition stream)
+             (format stream *retry-wave-failure-string*
+                     (wave condition) (retry-count (wave condition))
+                     (reason condition)))))
+
 (defmethod execute-wave ((wave retry-wave) &rest args)
-  (let ((count (retry-count wave)))
+  (let ((count (1- (retry-count wave))))
     (tagbody start
-       (multiple-value-bind (successp value) (call-next-method)
-         (cond (successp
-                (return-from execute-wave (values t value)))
-               ((positive-integer-p count)
-                (decf count)
-                (apply (retry-fn wave) wave args)
-                (go start))
-               (t
-                (return-from execute-wave (values nil value))))))))
+       (flet ((handler (e)
+                (cond ((non-negative-integer-p (decf count))
+                       (apply (retry-fn wave) wave args)
+                       (go start))
+                      (t (error (make-instance
+                                 'retry-wave-failure
+                                 :wave wave :reason e))))))
+         (handler-bind ((error #'handler))
+           (call-next-method))))))
+
+;;; WRAPPED-WAVE
+
+(defclass wrapped-wave (wave)
+  ((%before-fn :accessor before-fn
+               :initarg :before-fn)
+   (%after-fn :accessor after-fn
+              :initarg :after-fn))
+  (:default-initargs :before-fn (constantly nil)
+                     :after-fn (constantly nil)))
+
+(defparameter *wrapped-wave-before-failure*
+  "Failed to execute wrapped wave ~A during before-function call.~
+~@[~%Reason: ~A~]")
+
+(defparameter *wrapped-wave-during-failure*
+  "Failed to execute wrapped wave ~A during next method call.
+Before-function results: ~S~
+~@[~%Reason: ~A~]")
+
+(defparameter *wrapped-wave-after-failure*
+  "Failed to execute wrapped wave ~A during after-function call.
+Before-function results: ~S
+Method call results: ~S~
+~@[~%Reason: ~A~]")
+
+(defun wrapped-wave-failure-report (condition stream)
+  (case (state condition)
+    (:before (format stream *wrapped-wave-before-failure*
+                     (wave condition) (reason condition)))
+    (:during (format stream *wrapped-wave-before-failure*
+                     (wave condition) (before-result condition)
+                     (reason condition)))
+    (:after (format stream *wrapped-wave-after-failure*
+                    (wave condition) (before-result condition)
+                    (during-result condition) (reason condition)))))
+
+(define-condition wrapped-wave-failure (wave-failure)
+  ((%state :reader state
+           :initarg :state)
+   (%before-result :reader before-result
+                   :initarg :before-result)
+   (%during-result :reader during-result
+                   :initarg :during-result))
+  (:default-initargs :state (error "Must provide STATE.")
+                     :before-result nil :during-result nil)
+  (:report wrapped-wave-failure-report))
+
+(defmethod execute-wave :around ((wave wrapped-wave) &rest args)
+  (let ((state :before) before-result during-result)
+    (flet ((handler (e)
+             (error (make-condition 'wrapped-wave-failure
+                                    :wave wave :state state :reason e
+                                    :before-result before-result
+                                    :during-result during-result))))
+      (handler-bind ((error #'handler))
+        (setf before-result (apply (before-fn wave) args))
+        (setf state :during)
+        (setf during-result (call-next-method))
+        (setf state :after)
+        (apply (after-fn wave) args)
+        during-result))))

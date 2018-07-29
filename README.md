@@ -36,7 +36,7 @@ concurrently.
 
     By default, the value of `*WAVES*` is an empty hash table.
 
-### Classes
+### Classes and Condition Types
 
   * **Class `WAVE`**
 
@@ -50,7 +50,16 @@ concurrently.
     Accessors:
     * **Reader `NAME`** - returns the symbol that names the wave.
     * **Accessor `DESCRIPTION`** - returns the string describing the wave.
-    * **Acccessor `ERROR-FN`** - TODO
+
+  * **Condition Type `WAVE-FAILURE` (`ERROR`)**
+
+    A wave failure is an error that is signaled whenever wave execution is
+    unsuccessful.
+
+    Readers:
+    * **Reader `WAVE`** - returns the wave whose execution has failed.
+    * **Reader `REASON`** - returns the original error that triggered the wave
+      failure.
 
   * **Class `CALLBACK-WAVE` (`WAVE`)**
 
@@ -76,6 +85,10 @@ concurrently.
       must be a function whose protocol matches that of the generic function
       `EXECUTE-WAVE`.
 
+  * **Condition Type `RETRY-WAVE-FAILURE` (`WAVE-FAILURE`)**
+
+    A condition type representing failure of a retry wave.
+
   * **Class `WRAPPED-WAVE` (`WAVE`)**
 
     Represents a wave whose execution requires code to be executed as a prologue
@@ -89,6 +102,19 @@ concurrently.
     * **Accessor `AFTER-FN`** - accesses the wave's after-function. Its value
       must be a function whose lambda list matches that of the generic function
       `EXECUTE-WAVE`. Its secondary return value is ignored.
+
+  * **Condition Type `WRAPPED-WAVE-FAILURE` (`WAVE-FAILURE`)**
+
+    A condition type representing failure of a wrapped wave.
+
+    Readers:
+    * **Reader `STATE`** - one of `:BEFORE`, `:DURING`, or `:AFTER`. Denotes
+      if the failure occurred during the execution of the before-function,
+      the proper method call, or the after-function.
+    * **Reader `BEFORE-RESULT`** - if `STATE` is one of `:DURING` or `:AFTER`,
+      returns the value of the before-function. Otherwise, returns `NIL`.
+    * **Reader `DURING-RESULT`** - if `STATE` is `:AFTER`, returns the value of
+    the method call. Otherwise, returns `NIL`.
 
   * **Class `PUSH-WAVE` (`WRAPPED-WAVE`)**
 

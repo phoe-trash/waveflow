@@ -2,6 +2,31 @@
 
 (in-package #:waveflow)
 
+;;; COMPUTE-EXECUTION-STATUS
+
+(defvar *executed-waves*)
+
+(defvar *executing-waves*)
+
+(defgeneric compute-execution-status (wave dependencies)
+  (:documentation "Returns if the wave should be executed now based on whether
+its dependencies have been executed.")
+  (:method ((wave wave) dependencies)
+    (dolist (dependency dependencies)
+      (unless (gethash dependency *executed-waves*)
+        (return-from compute-execution-status nil)))
+    (when (or (gethash (name wave) *executing-waves*)
+              (gethash (name wave) *executed-waves*))
+      (return-from compute-execution-status nil))
+    (setf (gethash (name wave) *executing-waves*) t)
+    t))
+
+(defgeneric after-execution (wave dependencies)
+  (:documentation "Side effects after wave execution.")
+  (:method ((wave wave) dependencies)
+    (declare (ignore dependencies))
+    (setf (gethash (name wave) *executed-waves*) t)))
+
 ;;; WAVEFLOW-ERROR
 
 (define-condition waveflow-error (error) ())
@@ -111,12 +136,14 @@
           (flow-dependencies-dependents wave)
         (when (compute-execution-status wave dependencies)
           (multiple-value-bind (successp data) (call-next-method)
-            (after-execution wave dependencies)
             (unless successp
               (waveflow-error *waveflow-error-format* wave args))
+            (after-execution wave dependencies)
             (loop with spawn-fn = (spawn-fn *current-flow*)
                   for wave in (mapcar #'find-wave dependents)
                   do (apply spawn-fn wave args))
+            ;; TODO this may blow the stack; the flow must be the only thing to
+            ;; execute waves, a wave must not execute other waves
             (values successp data))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; TODO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
