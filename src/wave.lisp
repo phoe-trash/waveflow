@@ -164,9 +164,9 @@ Method call results: ~S~
     (:during (format stream *wrapped-wave-before-failure*
                      (wave condition) (before-result condition)
                      (reason condition)))
-    (:after (format stream *wrapped-wave-after-failure*
-                    (wave condition) (before-result condition)
-                    (during-result condition) (reason condition)))))
+    (:after  (format stream *wrapped-wave-after-failure*
+                     (wave condition) (before-result condition)
+                     (during-result condition) (reason condition)))))
 
 (define-condition wrapped-wave-failure (wave-failure)
   ((%state :reader state
@@ -193,3 +193,81 @@ Method call results: ~S~
         (setf state :after)
         (apply (after-fn wave) args)
         during-result))))
+
+;;; PUSH-WAVE
+
+(defclass push-wave (wrapped-wave)
+  ((%load-fn :accessor load-fn
+             :initarg :load-fn)
+   (%push-fn :accessor push-fn
+             :initarg :push-fn))
+  (:default-initargs :load-fn (constantly nil)
+                     :push-fn (constantly nil)))
+
+(defparameter *push-wave-before-failure*
+  "Failed to execute push wave ~A during before-function call.~
+~@[~%Reason: ~A~]")
+
+(defparameter *push-wave-load-failure*
+  "Failed to execute push wave ~A during load-function call.
+Before-function results: ~S~
+~@[~%Reason: ~A~]")
+
+(defparameter *push-wave-push-failure*
+  "Failed to execute push wave ~A during push-function call.
+Before-function results: ~S
+Load-function results: ~S~
+~@[~%Reason: ~A~]")
+
+(defparameter *push-wave-after-failure*
+  "Failed to execute push wave ~A during after-function call.
+Before-function results: ~S
+Load-function results: ~S
+Push-function results: ~S~
+~@[~%Reason: ~A~]")
+
+(defun push-wave-failure-report (condition stream)
+  (case (state condition)
+    (:before (format stream *push-wave-before-failure*
+                     (wave condition) (reason condition)))
+    (:load   (format stream *push-wave-load-failure*
+                     (wave condition) (before-result condition)
+                     (reason condition)))
+    (:push   (format stream *push-wave-push-failure*
+                     (wave condition) (before-result condition)
+                     (load-result condition) (reason condition)))
+    (:after  (format stream *push-wave-after-failure*
+                     (wave condition) (before-result condition)
+                     (load-result condition) (push-result condition)
+                     (reason condition)))))
+
+(define-condition push-wave-failure (wave-failure)
+  ((%state :reader state
+           :initarg :state)
+   (%before-result :reader before-result
+                   :initarg :before-result)
+   (%load-result :reader load-result
+                 :initarg :load-result)
+   (%push-result :reader push-result
+                 :initarg :push-result))
+  (:default-initargs :state (error "Must provide STATE.")
+                     :before-result nil :load-result nil :push-result nil)
+  (:report push-wave-failure-report))
+
+(defmethod execute-wave :around ((wave push-wave) &rest args)
+  (let ((state :before) before-result load-result push-result)
+    (flet ((handler (e)
+             (error (make-condition 'push-wave-failure
+                                    :wave wave :state state :reason e
+                                    :before-result before-result
+                                    :load-result load-result
+                                    :push-result push-result))))
+      (handler-bind ((error #'handler))
+        (setf before-result (apply (before-fn wave) args))
+        (setf state :load)
+        (setf load-result (apply (load-fn wave) args))
+        (setf state :push)
+        (setf push-result (apply (push-fn wave) args))
+        (setf state :after)
+        (apply (after-fn wave) args)
+        load-result))))
