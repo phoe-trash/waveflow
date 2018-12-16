@@ -7,6 +7,7 @@
   :version "0.0.1"
   :serial t
   :depends-on (#:alexandria
+               #:closer-mop
                #:phoe-toolbox)
   :components ((:file "src/package")
                (:file "src/wave")

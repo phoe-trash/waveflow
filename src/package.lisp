@@ -4,6 +4,9 @@
   (:use #:cl
         #:alexandria
         #:phoe-toolbox)
+  (:import-from #:closer-mop
+   :funcallable-standard-class
+   #:set-funcallable-instance-function)
   (:export
    ;; FIND-WAVE
    #:*waves* #:find-wave
